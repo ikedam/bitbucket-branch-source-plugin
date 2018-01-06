@@ -30,9 +30,10 @@ import com.cloudbees.jenkins.plugins.bitbucket.BranchSCMHead;
 import com.cloudbees.jenkins.plugins.bitbucket.PullRequestSCMHead;
 import com.cloudbees.jenkins.plugins.bitbucket.api.BitbucketApi;
 import com.cloudbees.jenkins.plugins.bitbucket.api.BitbucketApiFactory;
+import com.cloudbees.plugins.credentials.Credentials;
 import com.cloudbees.plugins.credentials.CredentialsMatchers;
 import com.cloudbees.plugins.credentials.CredentialsProvider;
-import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
+import com.cloudbees.plugins.credentials.common.IdCredentials;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
@@ -97,14 +98,14 @@ public class BitbucketSCMFileSystem extends SCMFileSystem {
             return null;
         }
         
-        private static StandardUsernamePasswordCredentials lookupScanCredentials(@CheckForNull Item context,
+        private static Credentials lookupScanCredentials(@CheckForNull Item context,
                 @CheckForNull String scanCredentialsId) {
             if (Util.fixEmpty(scanCredentialsId) == null) {
                 return null;
             } else {
                 return CredentialsMatchers.firstOrNull(
                         CredentialsProvider.lookupCredentials(
-                                StandardUsernamePasswordCredentials.class,
+                                IdCredentials.class,
                                 context,
                                 context instanceof Queue.Task
                                         ? Tasks.getDefaultAuthenticationOf((Queue.Task) context)
@@ -124,8 +125,7 @@ public class BitbucketSCMFileSystem extends SCMFileSystem {
             String owner = src.getRepoOwner();
             String repository = src.getRepository();
             String serverUrl = src.getServerUrl();
-            StandardUsernamePasswordCredentials credentials;
-            credentials = lookupScanCredentials(src.getOwner(), credentialsId);
+            Credentials credentials = lookupScanCredentials(src.getOwner(), credentialsId);
             
             BitbucketApi apiClient = BitbucketApiFactory.newInstance(serverUrl, credentials, owner, repository);
             String ref;

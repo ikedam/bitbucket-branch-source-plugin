@@ -35,6 +35,7 @@ import com.cloudbees.jenkins.plugins.bitbucket.api.BitbucketRequestException;
 import com.cloudbees.jenkins.plugins.bitbucket.api.BitbucketTeam;
 import com.cloudbees.jenkins.plugins.bitbucket.api.BitbucketWebHook;
 import com.cloudbees.jenkins.plugins.bitbucket.client.repository.UserRoleInRepository;
+import com.cloudbees.jenkins.plugins.bitbucket.credentials.BitbucketPersonalAccessTokenCredentials;
 import com.cloudbees.jenkins.plugins.bitbucket.filesystem.BitbucketSCMFile;
 import com.cloudbees.jenkins.plugins.bitbucket.server.client.branch.BitbucketServerBranch;
 import com.cloudbees.jenkins.plugins.bitbucket.server.client.branch.BitbucketServerBranches;
@@ -45,6 +46,7 @@ import com.cloudbees.jenkins.plugins.bitbucket.server.client.repository.Bitbucke
 import com.cloudbees.jenkins.plugins.bitbucket.server.client.repository.BitbucketServerRepositories;
 import com.cloudbees.jenkins.plugins.bitbucket.server.client.repository.BitbucketServerRepository;
 import com.cloudbees.jenkins.plugins.bitbucket.server.client.repository.BitbucketServerWebhooks;
+import com.cloudbees.plugins.credentials.Credentials;
 import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
@@ -135,18 +137,32 @@ public class BitbucketServerAPIClient implements BitbucketApi {
      * Credentials to access API services.
      * Almost @NonNull (but null is accepted for anonymous access).
      */
-    private final UsernamePasswordCredentials credentials;
+    private final Credentials credentials;
 
     private final String baseURL;
 
     public BitbucketServerAPIClient(@NonNull String baseURL, @NonNull String owner, @CheckForNull String repositoryName,
-                                    @CheckForNull StandardUsernamePasswordCredentials creds, boolean userCentric) {
-        this.credentials = (creds != null) ? new UsernamePasswordCredentials(creds.getUsername(),
-                Secret.toString(creds.getPassword())) : null;
+                                    @CheckForNull Credentials creds, boolean userCentric) {
+        this.credentials = creds;
         this.userCentric = userCentric;
         this.owner = owner;
         this.repositoryName = repositoryName;
         this.baseURL = Util.removeTrailingSlash(baseURL);
+    }
+
+    /**
+     * @param baseURL the base URL of the server.
+     * @param owner the owner of the repository.
+     * @param repositoryName the repository name.
+     * @param creds credentials to use to access.
+     * @param userCentric whether to use user-centric API or project API.
+     *
+     * @deprecated use {@link #BitbucketServerAPIClient(String, String, String, Credentials, boolean)}
+     */
+    @Deprecated
+    public BitbucketServerAPIClient(@NonNull String baseURL, @NonNull String owner, @CheckForNull String repositoryName,
+        @CheckForNull StandardUsernamePasswordCredentials creds, boolean userCentric) {
+        this(baseURL, owner, repositoryName, (Credentials)creds, userCentric);
     }
 
     /**
@@ -501,6 +517,12 @@ public class BitbucketServerAPIClient implements BitbucketApi {
     private String getRequest(String path) throws IOException {
         GetMethod httpget = new GetMethod(this.baseURL + path);
         HttpClient client = getHttpClient(getMethodHost(httpget));
+        if (credentials instanceof BitbucketPersonalAccessTokenCredentials) {
+            httpget.addRequestHeader(
+                "Authorization",
+                String.format("Bearer %s", ((BitbucketPersonalAccessTokenCredentials) credentials).getToken())
+            );
+        }
         try {
             client.executeMethod(httpget);
             String response;
@@ -543,8 +565,14 @@ public class BitbucketServerAPIClient implements BitbucketApi {
         client.getParams().setConnectionManagerTimeout(10 * 1000);
         client.getParams().setSoTimeout(60 * 1000);
 
-        if (credentials != null) {
-            client.getState().setCredentials(AuthScope.ANY, credentials);
+        if (credentials instanceof StandardUsernamePasswordCredentials) {
+            client.getState().setCredentials(
+                    AuthScope.ANY,
+                    new UsernamePasswordCredentials(
+                            ((StandardUsernamePasswordCredentials)credentials).getUsername(),
+                            Secret.toString(((StandardUsernamePasswordCredentials)credentials).getPassword())
+                    )
+            );
             client.getParams().setAuthenticationPreemptive(true);
         } else {
             client.getParams().setAuthenticationPreemptive(false);
@@ -583,6 +611,12 @@ public class BitbucketServerAPIClient implements BitbucketApi {
     private int getRequestStatus(String path) throws IOException {
         GetMethod httpget = new GetMethod(this.baseURL + path);
         HttpClient client = getHttpClient(getMethodHost(httpget));
+        if (credentials instanceof BitbucketPersonalAccessTokenCredentials) {
+            httpget.addRequestHeader(
+                "Authorization",
+                String.format("Bearer %s", ((BitbucketPersonalAccessTokenCredentials) credentials).getToken())
+            );
+        }
         try {
             client.executeMethod(httpget);
             return httpget.getStatusCode();
@@ -625,8 +659,12 @@ public class BitbucketServerAPIClient implements BitbucketApi {
 
     private String doRequest(HttpMethod httppost) throws IOException {
         HttpClient client = getHttpClient(getMethodHost(httppost));
-        client.getState().setCredentials(AuthScope.ANY, credentials);
-        client.getParams().setAuthenticationPreemptive(true);
+        if (credentials instanceof BitbucketPersonalAccessTokenCredentials) {
+            httppost.addRequestHeader(
+                "Authorization",
+                String.format("Bearer %s", ((BitbucketPersonalAccessTokenCredentials) credentials).getToken())
+            );
+        }
         try {
             client.executeMethod(httppost);
             if (httppost.getStatusCode() == HttpStatus.SC_NO_CONTENT) {

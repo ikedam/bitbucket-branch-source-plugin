@@ -229,7 +229,7 @@ public class WebhookAutoRegisterListener extends ItemListener {
                         ? null
                         : BitbucketApiFactory.newInstance(
                                 endpoint.getServerUrl(),
-                                endpoint.credentials(),
+                                endpoint.getCredentials(),
                                 source.getRepoOwner(),
                                 source.getRepository()
                         );

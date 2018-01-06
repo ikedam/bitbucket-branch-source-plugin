@@ -23,9 +23,15 @@
  */
 package com.cloudbees.jenkins.plugins.bitbucket;
 
+import com.cloudbees.jenkins.plugins.bitbucket.credentials.BitbucketPersonalAccessTokenCredentials;
+import com.cloudbees.jenkins.plugins.bitbucket.endpoints.AbstractBitbucketEndpoint;
+import com.cloudbees.jenkins.plugins.bitbucket.endpoints.BitbucketEndpointConfiguration;
+import com.cloudbees.plugins.credentials.Credentials;
+import com.cloudbees.plugins.credentials.CredentialsMatcher;
 import com.cloudbees.plugins.credentials.CredentialsMatchers;
 import com.cloudbees.plugins.credentials.CredentialsProvider;
 import com.cloudbees.plugins.credentials.common.StandardCredentials;
+import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
 import com.cloudbees.plugins.credentials.domains.URIRequirementBuilder;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
@@ -34,24 +40,84 @@ import hudson.model.queue.Tasks;
 import hudson.security.ACL;
 import jenkins.scm.api.SCMSourceOwner;
 import org.apache.commons.lang.StringUtils;
+import org.kohsuke.accmod.Restricted;
+import org.kohsuke.accmod.restrictions.NoExternalUse;
 
 /**
  * Utility class for common code accessing credentials
+ *
+ * This is not provided as API and do not use from other plugins.
  */
-class BitbucketCredentials {
+@Restricted(NoExternalUse.class)
+public class BitbucketCredentials {
     private BitbucketCredentials() {
         throw new IllegalAccessError("Utility class");
     }
 
+    /**
+     * @return the matcher to filter credentials applicable to Bitbucket Cloud.
+     */
+    @NonNull
+    public static CredentialsMatcher getInstanceMatcherForCloud() {
+        return CredentialsMatchers.instanceOf(StandardUsernamePasswordCredentials.class);
+    }
+
+    /**
+     * @return the matcher to filter credentials applicable to Bitbucket Server.
+     */
+    @NonNull
+    public static CredentialsMatcher getInstanceMatcherForServer() {
+        return CredentialsMatchers.anyOf(
+                CredentialsMatchers.instanceOf(StandardUsernamePasswordCredentials.class),
+                CredentialsMatchers.instanceOf(BitbucketPersonalAccessTokenCredentials.class)
+        );
+    }
+
+    /**
+     * @return the matcher to filter credentials applicable either to Bitbucket Cloud or Bitbucket Server.
+     */
+    @NonNull
+    public static CredentialsMatcher getInstanceMatcherForAny() {
+        return CredentialsMatchers.anyOf(
+                CredentialsMatchers.instanceOf(StandardUsernamePasswordCredentials.class),
+                CredentialsMatchers.instanceOf(BitbucketPersonalAccessTokenCredentials.class)
+        );
+    }
+
+    /**
+     * @return the matcher to filter credentials applicable to the url.
+     */
+    @NonNull
+    public static CredentialsMatcher getInstanceMatcherForUrl(String url) {
+        AbstractBitbucketEndpoint endpoint = BitbucketEndpointConfiguration.get().findEndpoint(url);
+        return (endpoint != null)
+                ? endpoint.getDescriptor().getCredentialsMatcher()
+                : getInstanceMatcherForAny();
+    }
+
+    /**
+     * Look up the credentials from the id.
+     *
+     * Use appropriate matcher to filter applicable credentials.
+     *
+     * @param serverUrl the URL for the repository.
+     * @param context the item accessing the repository.
+     * @param id the id to look up.
+     * @param instanceMatcher the matcher to filter applicable credentials.
+     * @return the credentials
+     * @see #getInstanceMatcherForAny()
+     * @see #getInstanceMatcherForCloud()
+     * @see #getInstanceMatcherForServer()
+     */
     @CheckForNull
-    static <T extends StandardCredentials> T lookupCredentials(@CheckForNull String serverUrl,
+    public static Credentials lookupCredentials(@CheckForNull String serverUrl,
                                                                @CheckForNull SCMSourceOwner context,
                                                                @CheckForNull String id,
-                                                               @NonNull Class<T> type) {
+                                                               @NonNull CredentialsMatcher instanceMatcher) {
         if (StringUtils.isNotBlank(id) && context != null) {
             return CredentialsMatchers.firstOrNull(
                     CredentialsProvider.lookupCredentials(
-                            type,
+                            StandardCredentials.class,
                             context,
                             context instanceof Queue.Task
                                     ? Tasks.getDefaultAuthenticationOf((Queue.Task) context)
@@ -60,7 +126,7 @@ class BitbucketCredentials {
                     ),
                     CredentialsMatchers.allOf(
                             CredentialsMatchers.withId(id),
-                            CredentialsMatchers.anyOf(CredentialsMatchers.instanceOf(type))
+                            instanceMatcher
                     )
             );
         }

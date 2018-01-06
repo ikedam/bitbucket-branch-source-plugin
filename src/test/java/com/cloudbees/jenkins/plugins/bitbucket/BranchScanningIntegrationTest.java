@@ -27,6 +27,8 @@ import com.cloudbees.jenkins.plugins.bitbucket.api.BitbucketRepositoryType;
 import com.cloudbees.jenkins.plugins.bitbucket.endpoints.BitbucketEndpointConfiguration;
 import com.cloudbees.jenkins.plugins.bitbucket.endpoints.BitbucketServerEndpoint;
 import com.cloudbees.jenkins.plugins.sshcredentials.impl.BasicSSHUserPrivateKey;
+import com.cloudbees.plugins.credentials.Credentials;
+import com.cloudbees.plugins.credentials.CredentialsMatchers;
 import com.cloudbees.plugins.credentials.CredentialsProvider;
 import com.cloudbees.plugins.credentials.CredentialsScope;
 import com.cloudbees.plugins.credentials.common.IdCredentials;
@@ -118,11 +120,11 @@ public class BranchScanningIntegrationTest {
         CredentialsProvider.lookupStores(j.jenkins).iterator().next()
                 .addCredentials(Domain.global(), c);
 
-        StandardCredentials creds = BitbucketCredentials.lookupCredentials(
+        Credentials creds = BitbucketCredentials.lookupCredentials(
                 null ,
                 source.getOwner(),
                 c.getId(),
-                UsernamePasswordCredentialsImpl.class
+                CredentialsMatchers.instanceOf(UsernamePasswordCredentialsImpl.class)
         );
         assertThat(creds, instanceOf(UsernamePasswordCredentialsImpl.class));
 
@@ -134,7 +136,7 @@ public class BranchScanningIntegrationTest {
                 null,
                 source.getOwner(),
                 c.getId(),
-                BasicSSHUserPrivateKey.class
+                CredentialsMatchers.instanceOf(BasicSSHUserPrivateKey.class)
         );
         assertThat(creds, instanceOf(BasicSSHUserPrivateKey.class));
     }

@@ -35,7 +35,6 @@ import com.cloudbees.jenkins.plugins.bitbucket.endpoints.BitbucketServerEndpoint
 import com.cloudbees.jenkins.plugins.sshcredentials.SSHUserPrivateKey;
 import com.cloudbees.plugins.credentials.Credentials;
 import com.cloudbees.plugins.credentials.common.IdCredentials;
-import com.cloudbees.plugins.credentials.common.StandardCredentials;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Util;
@@ -153,13 +152,13 @@ public class BitbucketHgSCMBuilder extends MercurialSCMBuilder<BitbucketHgSCMBui
     @NonNull
     public BitbucketHgSCMBuilder withBitbucketSource() {
         // Apply clone links and credentials
-        StandardCredentials credentials = StringUtils.isBlank(credentialsId())
+        Credentials credentials = StringUtils.isBlank(credentialsId())
                 ? null
                 : BitbucketCredentials.lookupCredentials(
                         scmSource().getServerUrl(),
                         scmSource().getOwner(),
                         credentialsId(),
-                        StandardCredentials.class
+                        BitbucketCredentials.getInstanceMatcherForAny()
                 );
         Integer protocolPortOverride = null;
         BitbucketRepositoryProtocol protocol = credentials instanceof SSHUserPrivateKey

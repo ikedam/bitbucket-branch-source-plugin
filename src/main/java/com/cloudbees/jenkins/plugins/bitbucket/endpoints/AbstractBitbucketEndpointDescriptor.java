@@ -23,10 +23,10 @@
  */
 package com.cloudbees.jenkins.plugins.bitbucket.endpoints;
 
-import com.cloudbees.plugins.credentials.CredentialsMatchers;
+import com.cloudbees.jenkins.plugins.bitbucket.BitbucketCredentials;
+import com.cloudbees.plugins.credentials.CredentialsMatcher;
+import com.cloudbees.plugins.credentials.common.StandardCredentials;
 import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
-import com.cloudbees.plugins.credentials.common.StandardUsernameCredentials;
-import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
 import com.cloudbees.plugins.credentials.domains.URIRequirementBuilder;
 import hudson.model.Descriptor;
 import hudson.security.ACL;
@@ -57,10 +57,17 @@ public abstract class AbstractBitbucketEndpointDescriptor extends Descriptor<Abs
         result.includeMatchingAs(
                 ACL.SYSTEM,
                 jenkins,
-                StandardUsernameCredentials.class,
+                StandardCredentials.class,
                 URIRequirementBuilder.fromUri(serverUrl).build(),
-                CredentialsMatchers.instanceOf(StandardUsernamePasswordCredentials.class)
+                getCredentialsMatcher()
         );
         return result;
+    }
+
+    /**
+     * @return the matcher to list credentials.
+     */
+    public CredentialsMatcher getCredentialsMatcher() {
+        return BitbucketCredentials.getInstanceMatcherForCloud();
     }
 }

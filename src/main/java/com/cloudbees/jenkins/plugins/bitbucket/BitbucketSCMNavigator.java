@@ -33,12 +33,12 @@ import com.cloudbees.jenkins.plugins.bitbucket.endpoints.AbstractBitbucketEndpoi
 import com.cloudbees.jenkins.plugins.bitbucket.endpoints.BitbucketCloudEndpoint;
 import com.cloudbees.jenkins.plugins.bitbucket.endpoints.BitbucketEndpointConfiguration;
 import com.cloudbees.jenkins.plugins.bitbucket.server.client.repository.BitbucketServerProject;
+import com.cloudbees.plugins.credentials.Credentials;
 import com.cloudbees.plugins.credentials.CredentialsMatchers;
 import com.cloudbees.plugins.credentials.CredentialsNameProvider;
 import com.cloudbees.plugins.credentials.common.StandardCredentials;
 import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
 import com.cloudbees.plugins.credentials.common.StandardUsernameCredentials;
-import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
 import com.cloudbees.plugins.credentials.domains.URIRequirementBuilder;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
@@ -447,11 +447,11 @@ public class BitbucketSCMNavigator extends SCMNavigator {
             listener.getLogger().format("Must specify a repository owner%n");
             return;
         }
-        StandardUsernamePasswordCredentials credentials = BitbucketCredentials.lookupCredentials(
+        Credentials credentials = BitbucketCredentials.lookupCredentials(
                 serverUrl,
                 observer.getContext(),
                 credentialsId,
-                StandardUsernamePasswordCredentials.class
+                BitbucketCredentials.getInstanceMatcherForAny()
         );
 
         if (credentials == null) {
@@ -497,11 +497,11 @@ public class BitbucketSCMNavigator extends SCMNavigator {
         // TODO when we have support for trusted events, use the details from event if event was from trusted source
         listener.getLogger().printf("Looking up team details of %s...%n", getRepoOwner());
         List<Action> result = new ArrayList<>();
-        StandardUsernamePasswordCredentials credentials = BitbucketCredentials.lookupCredentials(
+        Credentials credentials = BitbucketCredentials.lookupCredentials(
                 serverUrl,
                 owner,
                 credentialsId,
-                StandardUsernamePasswordCredentials.class
+                BitbucketCredentials.getInstanceMatcherForAny()
         );
 
         if (credentials == null) {
@@ -636,9 +636,9 @@ public class BitbucketSCMNavigator extends SCMNavigator {
                             ? Tasks.getDefaultAuthenticationOf((Queue.Task) context)
                             : ACL.SYSTEM,
                     context,
-                    StandardUsernameCredentials.class,
+                    StandardCredentials.class,
                     URIRequirementBuilder.fromUri(bitbucketServerUrl).build(),
-                    CredentialsMatchers.anyOf(CredentialsMatchers.instanceOf(StandardUsernamePasswordCredentials.class))
+                    BitbucketCredentials.getInstanceMatcherForUrl(bitbucketServerUrl)
             );
             return result;
         }

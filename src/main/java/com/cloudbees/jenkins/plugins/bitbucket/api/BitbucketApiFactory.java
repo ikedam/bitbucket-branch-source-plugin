@@ -1,11 +1,14 @@
 package com.cloudbees.jenkins.plugins.bitbucket.api;
 
+import com.cloudbees.plugins.credentials.Credentials;
 import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import hudson.ExtensionList;
 import hudson.ExtensionPoint;
+import hudson.Util;
+
 import java.net.URL;
 
 /**
@@ -34,10 +37,48 @@ public abstract class BitbucketApiFactory implements ExtensionPoint {
      * @return the {@link BitbucketApi}.
      */
     @NonNull
-    protected abstract BitbucketApi create(@Nullable String serverUrl,
+    protected BitbucketApi create(@Nullable String serverUrl,
+                                           @Nullable Credentials credentials,
+                                           @NonNull String owner,
+                                           @CheckForNull String repository) {
+        // for backward compatibility
+        // may cause ClassCastException
+        return create(
+            serverUrl,
+            (StandardUsernamePasswordCredentials)credentials,
+            owner,
+            repository
+        );
+    }
+
+    /**
+     * @param serverUrl   the server URL.
+     * @param credentials the (optional) credentials.
+     * @param owner       the owner name.
+     * @param repository  the (optional) repository name.
+     * @return the {@link BitbucketApi}.
+     *
+     * @deprecated use {@link #create(String, Credentials, String, String)} instead.
+     */
+    @Deprecated
+    @NonNull
+    protected BitbucketApi create(@Nullable String serverUrl,
                                            @Nullable StandardUsernamePasswordCredentials credentials,
                                            @NonNull String owner,
-                                           @CheckForNull String repository);
+                                           @CheckForNull String repository) {
+        if (Util.isOverridden(
+            BitbucketApiFactory.class,
+            getClass(),
+            "create",
+            String.class,
+            Credentials.class,
+            String.class,
+            String.class
+        )) {
+            return create(serverUrl, (Credentials)credentials, owner, repository);
+        }
+        throw new UnsupportedOperationException();
+    }
 
     /**
      * Creates a {@link BitbucketApi} for the specified URL with the supplied credentials, owner and (optional)
@@ -52,7 +93,7 @@ public abstract class BitbucketApiFactory implements ExtensionPoint {
      */
     @NonNull
     public static BitbucketApi newInstance(@Nullable String serverUrl,
-                                           @Nullable StandardUsernamePasswordCredentials credentials,
+                                           @Nullable Credentials credentials,
                                            @NonNull String owner,
                                            @CheckForNull String repository) {
         for (BitbucketApiFactory factory : ExtensionList.lookup(BitbucketApiFactory.class)) {
@@ -61,5 +102,24 @@ public abstract class BitbucketApiFactory implements ExtensionPoint {
             }
         }
         throw new IllegalArgumentException("Unsupported Bitbucket server URL: " + serverUrl);
+    }
+
+    /**
+     * @param serverUrl   the server URL.
+     * @param credentials the (optional) credentials.
+     * @param owner       the owner name.
+     * @param repository  the (optional) repository name.
+     * @return the {@link BitbucketApi}.
+     * @throws IllegalArgumentException if the supplied URL is not supported.
+     *
+     * @deprecated Use {@link #newInstance(String, Credentials, String, String)} instead.
+     */
+    @Deprecated
+    @NonNull
+    public static BitbucketApi newInstance(@Nullable String serverUrl,
+                                           @Nullable StandardUsernamePasswordCredentials credentials,
+                                           @NonNull String owner,
+                                           @CheckForNull String repository) {
+        return newInstance(serverUrl, (Credentials)credentials, owner, repository);
     }
 }

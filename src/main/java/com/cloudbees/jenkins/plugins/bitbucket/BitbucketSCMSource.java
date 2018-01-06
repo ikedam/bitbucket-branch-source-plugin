@@ -39,12 +39,11 @@ import com.cloudbees.jenkins.plugins.bitbucket.client.repository.UserRoleInRepos
 import com.cloudbees.jenkins.plugins.bitbucket.endpoints.AbstractBitbucketEndpoint;
 import com.cloudbees.jenkins.plugins.bitbucket.endpoints.BitbucketCloudEndpoint;
 import com.cloudbees.jenkins.plugins.bitbucket.endpoints.BitbucketEndpointConfiguration;
+import com.cloudbees.plugins.credentials.Credentials;
 import com.cloudbees.plugins.credentials.CredentialsMatchers;
 import com.cloudbees.plugins.credentials.CredentialsNameProvider;
 import com.cloudbees.plugins.credentials.common.StandardCredentials;
 import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
-import com.cloudbees.plugins.credentials.common.StandardUsernameCredentials;
-import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
 import com.cloudbees.plugins.credentials.domains.URIRequirementBuilder;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
@@ -529,7 +528,7 @@ public class BitbucketSCMSource extends SCMSource {
         try (BitbucketSCMSourceRequest request = new BitbucketSCMSourceContext(criteria, observer)
                 .withTraits(traits)
                 .newRequest(this, listener)) {
-            StandardUsernamePasswordCredentials scanCredentials = credentials();
+            Credentials scanCredentials = credentials();
             if (scanCredentials == null) {
                 listener.getLogger().format("Connecting to %s with no credentials, anonymous access%n", getServerUrl());
             } else {
@@ -987,13 +986,18 @@ public class BitbucketSCMSource extends SCMSource {
     }
 
     @CheckForNull
-    /* package */ StandardUsernamePasswordCredentials credentials() {
+    /* package */ Credentials getCredentialsForId(String credentialsId) {
         return BitbucketCredentials.lookupCredentials(
                 getServerUrl(),
                 getOwner(),
-                getCredentialsId(),
-                StandardUsernamePasswordCredentials.class
+                credentialsId,
+                BitbucketCredentials.getInstanceMatcherForAny()
         );
+    }
+
+    @CheckForNull
+    /* package */ Credentials credentials() {
+        return getCredentialsForId(getCredentialsId());
     }
 
     @NonNull
@@ -1172,9 +1176,9 @@ public class BitbucketSCMSource extends SCMSource {
                             ? Tasks.getDefaultAuthenticationOf((Queue.Task) context)
                             : ACL.SYSTEM,
                     context,
-                    StandardUsernameCredentials.class,
+                    StandardCredentials.class,
                     URIRequirementBuilder.fromUri(serverUrl).build(),
-                    CredentialsMatchers.anyOf(CredentialsMatchers.instanceOf(StandardUsernamePasswordCredentials.class))
+                    BitbucketCredentials.getInstanceMatcherForUrl(serverUrl)
             );
             return result;
         }
@@ -1190,11 +1194,11 @@ public class BitbucketSCMSource extends SCMSource {
             context.getACL().checkPermission(Item.CONFIGURE);
             serverUrl = StringUtils.defaultIfBlank(serverUrl, BitbucketCloudEndpoint.SERVER_URL);
             ListBoxModel result = new ListBoxModel();
-            StandardUsernamePasswordCredentials credentials = BitbucketCredentials.lookupCredentials(
+            Credentials credentials = BitbucketCredentials.lookupCredentials(
                     serverUrl,
                     context,
                     credentialsId,
-                    StandardUsernamePasswordCredentials.class
+                    BitbucketCredentials.getInstanceMatcherForAny()
             );
             try {
                 BitbucketApi bitbucket = BitbucketApiFactory.newInstance(serverUrl, credentials, repoOwner, null);

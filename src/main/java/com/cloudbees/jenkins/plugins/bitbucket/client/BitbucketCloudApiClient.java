@@ -49,6 +49,7 @@ import com.cloudbees.jenkins.plugins.bitbucket.client.repository.BitbucketReposi
 import com.cloudbees.jenkins.plugins.bitbucket.client.repository.PaginatedBitbucketRepository;
 import com.cloudbees.jenkins.plugins.bitbucket.client.repository.UserRoleInRepository;
 import com.cloudbees.jenkins.plugins.bitbucket.filesystem.BitbucketSCMFile;
+import com.cloudbees.plugins.credentials.Credentials;
 import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
@@ -106,9 +107,12 @@ public class BitbucketCloudApiClient implements BitbucketApi {
         connectionManager.getParams().setMaxTotalConnections(22);
     }
 
-    public BitbucketCloudApiClient(String owner, String repositoryName, StandardUsernamePasswordCredentials creds) {
-        if (creds != null) {
-            this.credentials = new UsernamePasswordCredentials(creds.getUsername(), Secret.toString(creds.getPassword()));
+    public BitbucketCloudApiClient(String owner, String repositoryName, Credentials creds) {
+        if (creds instanceof StandardUsernamePasswordCredentials) {
+            this.credentials = new UsernamePasswordCredentials(
+                    ((StandardUsernamePasswordCredentials)creds).getUsername(),
+                    Secret.toString(((StandardUsernamePasswordCredentials)creds).getPassword())
+            );
         } else {
             this.credentials = null;
         }
@@ -129,6 +133,17 @@ public class BitbucketCloudApiClient implements BitbucketApi {
 
         setClientProxyParams("bitbucket.org", client);
         this.client = client;
+    }
+
+    /**
+     * @param owner       the owner name.
+     * @param repositoryName  the (optional) repository name.
+     * @param creds the (optional) credentials.
+     *
+     * @deprecated Use {@link #BitbucketCloudApiClient(String, String, Credentials)}
+     */
+    public BitbucketCloudApiClient(String owner, String repositoryName, StandardUsernamePasswordCredentials creds) {
+        this(owner, repositoryName, (Credentials)creds);
     }
 
     /**
